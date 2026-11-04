@@ -1,0 +1,14 @@
+{
+  "napcat": {
+    "wsUrl": "ws://127.0.0.1:3001",
+    "accessToken": ""
+  },
+  "bridge": {
+    "wsPort": 8787,
+    "heartbeatMs": 20000
+  },
+  "qq": {
+    "botQQ": 0,
+    "targetUserId": 0
+  }
+}

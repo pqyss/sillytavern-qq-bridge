@@ -1,0 +1,10 @@
+{
+  "display_name": "QQ 酒馆桥接",
+  "loading_order": 10,
+  "js": "script.js",
+  "css": "style.css",
+  "author": "ZhuanZ",
+  "version": "1.0.0",
+  "description": "将酒馆当前对话通过指定 QQ 好友私聊双向桥接，实现手机端远程聊角色。需配合本地 bridge.js 使用。",
+  "homePage": ""
+}

@@ -1,0 +1,33 @@
+<div id="qq_bridge_settings" class="extension_settings">
+  <div class="inline-drawer">
+    <div class="inline-drawer-toggle inline-drawer-header">
+      <div class="flex-container alignitemscenter margin0">
+        <b>QQ 酒馆桥接</b>
+      </div>
+      <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+    </div>
+    <div class="inline-drawer-content">
+      <div class="qq-bridge-row">
+        <label for="qq-bridge-url">桥接地址</label>
+        <input id="qq-bridge-url" type="text" class="text_pole" value="ws://localhost:8787" />
+      </div>
+      <div class="qq-bridge-row">
+        <span id="qq-bridge-status" class="qq-bridge-dot off"></span>
+        <span id="qq-bridge-status-text">未连接</span>
+      </div>
+      <div class="qq-bridge-row">
+        <span>当前对话：<b id="qq-bridge-chat">—</b></span>
+      </div>
+      <div class="qq-bridge-row">
+        <div id="qq-bridge-toggle" class="menu_button">
+          <i class="fa-solid fa-plug"></i>
+          <span>绑定当前对话并启用</span>
+        </div>
+      </div>
+      <div class="qq-bridge-hint">
+        前提：NapCat 已开好正向 WebSocket，且 bridge.js 正在运行。<br />
+        打开想桥接的酒馆对话，点「绑定当前对话并启用」。之后 QQ 好友发来的消息会作为用户消息发到酒馆并触发 AI 回复；酒馆的 AI 回复会自动转发到该 QQ 好友。
+      </div>
+    </div>
+  </div>
+</div>

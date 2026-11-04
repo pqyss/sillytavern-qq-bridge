@@ -1,0 +1,38 @@
+.qq-bridge-panel {
+  padding: 8px;
+  font-size: 13px;
+}
+.qq-bridge-row {
+  margin: 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.qq-bridge-row label {
+  min-width: 56px;
+}
+.qq-bridge-row input {
+  flex: 1;
+  min-width: 160px;
+}
+.qq-bridge-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.qq-bridge-dot.on {
+  background: #2ecc71;
+}
+.qq-bridge-dot.off {
+  background: #e74c3c;
+}
+.qq-bridge-hint {
+  color: #888;
+  font-size: 12px;
+  line-height: 1.5;
+}
+#qq-bridge-toggle {
+  cursor: pointer;
+}
