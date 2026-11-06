@@ -36,48 +36,77 @@ if (TARGET_USER_ID === '0') {
 
 // ---------- 本地 WebSocket 服务端（给酒馆扩展用） ----------
 const wss = new WebSocket.Server({ port: BRIDGE_PORT });
-const stClients = new Set();
+let activeST = null;  // 同时只保留一个酒馆客户端连接：避免扩展被重复加载/重连产生多条连接互相打架、造成反复断联
+
+// 酒馆客户端离线期间收到的 QQ 私聊消息先入队，待其重连后补推（避免用户离线时发的消息丢失）
+const stQueue = [];
+const ST_QUEUE_MAX = 50;
 
 wss.on('connection', (ws) => {
+  // 若已有一条活跃连接（通常是扩展重复加载/重连产生的旧连接），先清理它，保证全局只有一条有效链路
+  if (activeST && activeST !== ws && activeST.readyState === WebSocket.OPEN) {
+    console.log('[bridge] 发现旧连接，清理以避免重复桥接');
+    try { activeST.terminate(); } catch (e) {}
+  }
+  activeST = ws;
   console.log('[bridge] 酒馆扩展已连接');
-  stClients.add(ws);
+  // 酒馆重连后，把离线期间缓存的 QQ 消息补推过去
+  if (stQueue.length) {
+    console.log(`[bridge] 补推离线期间缓存的 ${stQueue.length} 条 QQ 消息`);
+    while (stQueue.length) {
+      try { ws.send(stQueue.shift()); } catch (e) { break; }
+    }
+  }
   ws.on('message', (raw) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg && msg.type === 'st_message' && typeof msg.text === 'string') {
       sendToQQ(msg.text);
+    } else if (msg && msg.type === 'ping') {
+      // 客户端应用层心跳，回 pong 表示存活（浏览器不发协议层 pong 给 JS，故用应用层）
+      try { ws.send(JSON.stringify({ type: 'pong' })); } catch (e) {}
     }
   });
-  ws.on('close', () => {
-    stClients.delete(ws);
-    console.log('[bridge] 酒馆扩展已断开');
+  ws.on('close', (code, reason) => {
+    if (activeST === ws) activeST = null;
+    console.log(`[bridge] 酒馆扩展已断开 (code=${code})`);
   });
   ws.on('error', () => {});
-  // 心跳标记：配合下方定时器检测死连接
+  // 心跳标记：配合下方定时器检测死连接（容忍偶发漏 pong）
   ws.isAlive = true;
-  ws.on('pong', () => { ws.isAlive = true; });
+  ws.missed = 0;
+  ws.on('pong', () => { ws.isAlive = true; ws.missed = 0; });
 });
 
 // ---------- 心跳保活（应对息屏/休眠后连接被回收） ----------
-// 定期向每个客户端发 ping；若上次 pong 未收到则判定为死连接并终止。
+// 定期向每个客户端发协议层 ping；浏览器会自动回 pong。
+// 连续 3 次（约 HEARTBEAT_MS*3）未收到 pong 才判定为死连接并终止，避免偶发抖动误杀。
 // 持续的心跳流量也能让浏览器/系统不要把空闲连接当作可回收资源。
 const HEARTBEAT_MS = (config.bridge && config.bridge.heartbeatMs) || 20000;
 const heartbeatTimer = setInterval(() => {
-  wss.clients.forEach((ws) => {
-    if (ws.isAlive === false) {
-      ws.terminate();
+  const ws = activeST;
+  if (!ws) return;
+  if (ws.isAlive === false) {
+    // 上一轮没收到 pong：累计未响应次数，连续 3 次才判定死亡
+    ws.missed = (ws.missed || 0) + 1;
+    if (ws.missed >= 3) {
+      try { ws.terminate(); } catch (e) {}
       return;
     }
-    ws.isAlive = false;
-    try { ws.ping(); } catch (e) {}
-  });
+  }
+  ws.isAlive = false;
+  try { ws.ping(); } catch (e) {}
 }, HEARTBEAT_MS);
 wss.on('close', () => clearInterval(heartbeatTimer));
 
 function broadcastToST(obj) {
   const data = JSON.stringify(obj);
-  for (const ws of stClients) {
-    if (ws.readyState === WebSocket.OPEN) ws.send(data);
+  if (activeST && activeST.readyState === WebSocket.OPEN) {
+    activeST.send(data);
+  } else if (obj.type === 'qq_message') {
+    // 酒馆客户端离线：缓存 QQ 私聊，待重连补推（缓存其他类型无意义）
+    stQueue.push(data);
+    if (stQueue.length > ST_QUEUE_MAX) stQueue.shift();
   }
 }
 
@@ -117,8 +146,8 @@ function connectOneBot() {
     }
   });
 
-  onebot.on('close', () => {
-    console.log('[bridge] 与 NapCat 断开，5 秒后重连…');
+  onebot.on('close', (code, reason) => {
+    console.log(`[bridge] 与 NapCat 断开 (code=${code})，5 秒后重连…`);
     setTimeout(connectOneBot, 5000);
   });
 
